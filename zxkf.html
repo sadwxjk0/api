@@ -1,0 +1,324 @@
+<html><head>
+  <meta charset="UTF-8">
+  <meta content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=1" name="viewport">
+  <meta content="yes" name="apple-mobile-web-app-capable">
+  <meta content="yes" name="apple-touch-fullscreen">
+  <meta content="black" name="apple-mobile-web-app-status-bar-style">
+  <title>官方认证-安全访问</title>
+<style>
+.loading-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 0.2s ease-out; /* 快速消失动画 */
+}
+.security-text {
+    font-size: 24px;
+    color: #28a745;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+}
+.security-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #28a745;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 30px;
+    margin-bottom: 15px;
+    transition: background-color 0.3s ease;
+}
+.error-icon {
+    background-color: #dc3545;
+}
+.loading-tip {
+    color: #6c757d;
+    font-size: 14px;
+    text-align: center;
+    padding: 0 20px;
+}
+.time-remaining {
+    color: #6c757d;
+    font-size: 14px;
+    margin-top: 10px;
+}
+.decode-countdown {
+    color: #28a745;
+    font-size: 16px;
+    margin-top: 10px;
+    font-weight: bold;
+}
+.content-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+.iframe-content {
+    width: 100%;
+    height: 100%;
+    border: none;
+    opacity: 0;
+    transition: opacity 0.2s ease-in; /* 快速显示动画 */
+    pointer-events: auto;
+}
+.iframe-content.loaded {
+    opacity: 1;
+}
+.error-container {
+    display: none;
+    text-align: center;
+    padding: 20px;
+}
+.error-retry {
+    margin-top: 20px;
+    padding: 8px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+.error-retry:hover {
+    background-color: #0056b3;
+}
+@media (max-width: 768px) {
+    .iframe-content {
+        touch-action: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+</style>
+<style type="text/css" id="__via_marker__"></style></head>
+<body>
+<div class="loading-container" id="loadingContainer">
+    <div class="security-icon">✓</div>
+    <div class="security-text">官方安全验证</div>
+    <div class="loading-tip">正在进行用户身份认证，请稍等...</div>
+    <div class="decode-countdown">正在为您转入人工客服，倒计时 <span id="decodeTimer">3</span> 秒</div> <!-- 显示3秒 -->
+    <div class="time-remaining">页面有效期剩余 <span id="timeLeft">600</span> 秒</div>
+</div>
+<div class="content-container" id="contentContainer">
+</div>
+<div class="error-container" id="errorContainer">
+    <div class="security-icon error-icon">!</div>
+    <div class="security-text" style="color: #dc3545;">加载失败</div>
+    <div class="loading-tip">缺少编码参数 联系 @Sadzc8</div>
+    <button class="error-retry" onclick="retryLoad()">重试</button>
+</div>
+<script>
+const ALLOWED_DOMAINS = [
+    "",
+    "",
+    "",
+    "",
+    "shangxin.sbs" // 已包含你的目标域名
+];
+let isDomainChecked = false;
+let validTargetUrl = "";
+
+let timeLeft = 281;
+const timeLeftElement = document.getElementById('timeLeft');
+let countdownTimer;
+if (timeLeftElement) {
+    countdownTimer = setInterval(() => {
+        timeLeft--;
+        timeLeftElement.textContent = timeLeft;
+        
+        if (timeLeft <= 0) {
+            clearInterval(countdownTimer);
+            showError("页面已过期，请重新访问");
+        }
+    }, 1000);
+}
+
+// 核心调整：倒计时设为3秒，定时器间隔100ms确保倒计时流畅
+let decodeSeconds = 3; 
+const decodeTimerElement = document.getElementById('decodeTimer');
+let decodeCountdown;
+decodeCountdown = setInterval(() => {
+    decodeSeconds--;
+    decodeTimerElement.textContent = decodeSeconds;
+    
+    if (decodeSeconds <= 0) {
+        clearInterval(decodeCountdown);
+        processEncodedUrl(); // 倒计时结束后立即执行跳转
+    }
+}, 1000); // 1秒间隔，准确显示3秒倒计时
+
+
+function processEncodedUrl() {
+    if (isDomainChecked && validTargetUrl) {
+        loadIframe(validTargetUrl);
+        return;
+    }
+
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const encodedParam = urlParams.get('api');
+        
+        if (!encodedParam) {
+            throw new Error("未找到参数");
+        }
+        
+        let trueUrl = atob(encodedParam);
+        new URL(trueUrl); 
+
+        const targetUrl = new URL(trueUrl);
+        const targetDomain = targetUrl.hostname;
+        const isDomainAllowed = ALLOWED_DOMAINS.some(allowedDomain => 
+            targetDomain === allowedDomain || targetDomain.endsWith(`.${allowedDomain}`)
+        );
+        
+        if (!isDomainAllowed) {
+            throw new Error(`该域名无权使用此接口（${targetDomain}），请联系@Sadzc8添加权限`);
+        }
+
+        isDomainChecked = true;
+        validTargetUrl = trueUrl;
+
+        loadIframe(trueUrl);
+    } catch (e) {
+        console.error("解码过程出错:", e);
+        isDomainChecked = false;
+        validTargetUrl = "";
+        showError(`解码失败: ${e.message}`);
+    }
+}
+
+function loadIframe(url) {
+    const contentContainer = document.getElementById('contentContainer');
+    const loadingContainer = document.getElementById('loadingContainer');
+    const errorContainer = document.getElementById('errorContainer');
+    
+    errorContainer.style.display = "none";
+    
+    const oldIframe = document.querySelector('.iframe-content');
+    if (oldIframe) {
+        oldIframe.remove();
+    }
+    
+    const iframe = document.createElement('iframe');
+    iframe.className = 'iframe-content';
+    iframe.src = url;
+    iframe.title = "嵌入内容";
+    iframe.allow = "geolocation; microphone; camera; payment";
+    iframe.scrolling = "yes";
+    iframe.setAttribute('webkitallowfullscreen', 'true');
+    iframe.setAttribute('mozallowfullscreen', 'true');
+    iframe.setAttribute('allowfullscreen', 'true');
+    
+    // 优化：iframe加载完成后立即显示（无延迟）
+    iframe.onload = function() {
+        iframe.classList.add('loaded');
+        setupIframeInteraction(iframe);
+        console.log("iframe加载完成:", url);
+    };
+    
+    iframe.onerror = function() {
+        showError("无法加载目标页面，可能存在跨域限制或链接无效");
+        if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+        }
+    };
+    
+    contentContainer.appendChild(iframe);
+    
+    // 优化：加载动画快速消失（0.2秒过渡）
+    loadingContainer.style.opacity = "0";
+    setTimeout(() => {
+        loadingContainer.style.display = "none";
+    }, 200);
+}
+
+function setupIframeInteraction(iframe) {
+    try {
+        let isSameOrigin = false;
+        try {
+            const iframeOrigin = new URL(iframe.src).origin;
+            isSameOrigin = window.location.origin === iframeOrigin;
+        } catch (e) {
+            console.log('无法验证同源性:', e);
+        }
+        if (isSameOrigin) {
+            const setIframeScrollable = () => {
+                try {
+                    const doc = iframe.contentDocument || iframe.contentWindow.document;
+                    doc.body.style.overflow = 'auto';
+                    doc.documentElement.style.overflow = 'auto';
+                } catch (e) {
+                    console.log('设置滚动失败:', e);
+                }
+            };
+            setIframeScrollable();
+        }
+        
+        document.body.style.touchAction = 'auto';
+        document.documentElement.style.touchAction = 'auto';
+        
+    } catch (e) {
+        console.log('设置交互失败:', e);
+    }
+}
+
+function showError(message) {
+    clearInterval(countdownTimer);
+    clearInterval(decodeCountdown);
+    
+    const loadingContainer = document.getElementById('loadingContainer');
+    const errorContainer = document.getElementById('errorContainer');
+    
+    loadingContainer.style.display = "none";
+    errorContainer.querySelector('.loading-tip').textContent = message;
+    errorContainer.style.display = "flex";
+    errorContainer.style.flexDirection = "column";
+    errorContainer.style.justifyContent = "center";
+    errorContainer.style.alignItems = "center";
+    errorContainer.style.width = "100%";
+    errorContainer.style.height = "100%";
+    errorContainer.style.position = "absolute";
+    errorContainer.style.top = "0";
+    errorContainer.style.left = "0";
+    errorContainer.style.backgroundColor = "#f8f9fa";
+    errorContainer.style.zIndex = "9999";
+}
+
+function retryLoad() {
+    const contentContainer = document.getElementById('contentContainer');
+    contentContainer.innerHTML = '';
+    
+    const loadingContainer = document.getElementById('loadingContainer');
+    loadingContainer.style.display = "flex";
+    loadingContainer.style.opacity = "1";
+    document.querySelector('.loading-tip').textContent = "正在重新加载...";
+    document.getElementById('decodeTimer').textContent = 3; // 重试时重置为3秒
+    decodeSeconds = 3;
+
+    const currentEncoded = new URLSearchParams(window.location.search).get('api');
+    const lastEncoded = validTargetUrl ? btoa(validTargetUrl) : "";
+
+    if (currentEncoded === lastEncoded) {
+        setTimeout(processEncodedUrl, 100);
+    } else {
+        isDomainChecked = false;
+        validTargetUrl = "";
+        setTimeout(processEncodedUrl, 100);
+    }
+}
+</script>
+</body></html>
